@@ -2,6 +2,7 @@ package com.cleanroommc.modularui.api;
 
 import com.cleanroommc.modularui.screen.ModularPanel;
 import com.cleanroommc.modularui.screen.SecondaryPanel;
+import com.cleanroommc.modularui.value.sync.ItemSlotSH;
 import com.cleanroommc.modularui.value.sync.PanelSyncHandler;
 import com.cleanroommc.modularui.value.sync.PanelSyncManager;
 
@@ -11,7 +12,7 @@ import org.jetbrains.annotations.ApiStatus;
  * This class can handle opening and closing of a {@link ModularPanel}. It makes sure, that the same panel is not created multiple
  * times and instead reused.
  * <p>Using {@link #openPanel()} is the only way to open multiple panels. </p>
- * <p>Panels can be closed with {@link #closePanel()}, but also with {@link ModularPanel#closeIfOpen(boolean)} and
+ * <p>Panels can be closed with {@link #closePanel()}, but also with {@link ModularPanel#closeIfOpen()} and
  * {@link ModularPanel#animateClose()}. With the difference, that the method from this interface also works on server side. </p>
  * Synced panels must be created with {@link PanelSyncManager#panel(String, PanelSyncHandler.IPanelBuilder, boolean)}.
  * If the panel does not contain any synced widgets, a simple panel handler using {@link #simple(ModularPanel, SecondaryPanel.IPanelBuilder, boolean)}
@@ -33,6 +34,8 @@ public interface IPanelHandler {
     static IPanelHandler simple(ModularPanel parent, SecondaryPanel.IPanelBuilder provider, boolean subPanel) {
         return new SecondaryPanel(parent, provider, subPanel);
     }
+
+    boolean isPanelOpen();
 
     /**
      * Opens the panel. If there is no cached panel, one will be created.
@@ -60,9 +63,9 @@ public interface IPanelHandler {
 
     /**
      * Deletes the current cached panel. Should not be used frequently.
-     * This only works on non synced panels. Otherwise, it crashes.
+     * This only works on panels which don't have {@link ItemSlotSH} sync handlers.
      *
-     * @throws UnsupportedOperationException if this handler is synced
+     * @throws UnsupportedOperationException if this handler has ItemSlot sync handlers
      */
     void deleteCachedPanel();
 

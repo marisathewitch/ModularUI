@@ -5,21 +5,37 @@ import com.cleanroommc.modularui.drawable.GuiDraw;
 
 public class VerticalScrollData extends ScrollData {
 
+    /**
+     * Creates vertical scroll data which handles scrolling and scroll bar.
+     * Scrollbar is 4 pixel wide and is placed on the right.
+     */
     public VerticalScrollData() {
-        this(false);
+        this(false, DEFAULT_THICKNESS);
     }
 
+    /**
+     * Creates vertical scroll data which handles scrolling and scroll bar.
+     * Scrollbar is 4 pixel wide.
+     *
+     * @param leftAlignment if the scroll bar should be placed on the left
+     */
     public VerticalScrollData(boolean leftAlignment) {
-        this(leftAlignment, 4);
+        this(leftAlignment, DEFAULT_THICKNESS);
     }
 
+    /**
+     * Creates vertical scroll data which handles scrolling and scroll bar.
+     *
+     * @param leftAlignment if the scroll bar should be placed on the left
+     * @param thickness     width of the scroll bar in pixel
+     */
     public VerticalScrollData(boolean leftAlignment, int thickness) {
         super(GuiAxis.Y, leftAlignment, thickness);
     }
 
-    @Override
-    public float getProgress(ScrollArea area, int x, int y) {
-        return (y - area.y) / (float) getFullVisibleSize(area);
+    public VerticalScrollData cancelScrollEdge(boolean cancelScrollEdge) {
+        setCancelScrollEdge(cancelScrollEdge);
+        return this;
     }
 
     @Override
@@ -53,21 +69,12 @@ public class VerticalScrollData extends ScrollData {
         int h = area.height;
         GuiDraw.drawRect(x, y, w, h, area.getScrollBarBackgroundColor());
 
-        y = ((getFullVisibleSize(area, isOtherActive) - l) * getScroll()) / (getScrollSize() - getVisibleSize(area, isOtherActive));
+        y = getScrollBarStart(area, l, isOtherActive);
         ScrollData data2 = getOtherScrollData(area);
         if (data2 != null && isOtherActive && data2.isOnAxisStart()) {
             y += data2.getThickness();
         }
         h = l;
         drawScrollBar(x, y, w, h);
-    }
-
-    @Override
-    public boolean onMouseClicked(ScrollArea area, int x, int y, int button) {
-        if (isOnAxisStart() ? x <= area.x + getThickness() : x >= area.ex() - getThickness()) {
-            this.dragging = true;
-            return true;
-        }
-        return false;
     }
 }

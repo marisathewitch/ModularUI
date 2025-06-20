@@ -3,6 +3,7 @@ package com.cleanroommc.modularui.widget.scroll;
 import com.cleanroommc.modularui.api.GuiAxis;
 import com.cleanroommc.modularui.screen.viewport.GuiContext;
 import com.cleanroommc.modularui.utils.Color;
+import com.cleanroommc.modularui.utils.MathUtils;
 import com.cleanroommc.modularui.widget.sizer.Area;
 
 import net.minecraft.client.gui.GuiScreen;
@@ -25,8 +26,7 @@ public class ScrollArea extends Area {
         super(x, y, w, h);
     }
 
-    public ScrollArea() {
-    }
+    public ScrollArea() {}
 
     public void setScrollData(ScrollData data) {
         if (data instanceof HorizontalScrollData scrollData) {
@@ -72,15 +72,13 @@ public class ScrollArea extends Area {
      * This method should be invoked to register dragging
      */
     public boolean mouseClicked(int x, int y) {
-        ScrollData data;
         if (this.scrollX != null && this.scrollX.isInsideScrollbarArea(this, x, y)) {
-            data = this.scrollX;
+            return this.scrollX.onMouseClicked(this, x, y, 0);
         } else if (this.scrollY != null && this.scrollY.isInsideScrollbarArea(this, x, y)) {
-            data = this.scrollY;
+            return this.scrollY.onMouseClicked(this, y, x, 0);
         } else {
             return false;
         }
-        return data.onMouseClicked(this, x, y, 0);
     }
 
     @SideOnly(Side.CLIENT)
@@ -92,7 +90,10 @@ public class ScrollArea extends Area {
      * This method should be invoked when mouse wheel is scrolling
      */
     public boolean mouseScroll(int x, int y, int scroll, boolean shift) {
-        if (!isInside(x, y)) return false;
+        if (!isInside(x, y)) {
+            // not hovering TODO: this shouldnt be required
+            return false;
+        }
 
         ScrollData data;
         if (this.scrollX != null) {
@@ -100,6 +101,7 @@ public class ScrollArea extends Area {
         } else if (this.scrollY != null) {
             data = this.scrollY;
         } else {
+            // no scroll data present -> cant be scrolled
             return false;
         }
 
@@ -120,9 +122,7 @@ public class ScrollArea extends Area {
             data.animateTo(this, scrollTo);
             return true;
         }
-
-        //return data.cancelScrollEdge;
-        return false;
+        return data.isCancelScrollEdge();
     }
 
     @SideOnly(Side.CLIENT)
@@ -136,9 +136,11 @@ public class ScrollArea extends Area {
     public void mouseReleased(int x, int y) {
         if (this.scrollX != null) {
             this.scrollX.dragging = false;
+            this.scrollX.clickOffset = 0;
         }
         if (this.scrollY != null) {
             this.scrollY.dragging = false;
+            this.scrollY.clickOffset = 0;
         }
     }
 
@@ -153,15 +155,18 @@ public class ScrollArea extends Area {
      */
     public void drag(int x, int y) {
         ScrollData data;
+        float progress;
         if (this.scrollX != null && this.scrollX.dragging) {
             data = this.scrollX;
+            progress = data.getProgress(this, x, y);
         } else if (this.scrollY != null && this.scrollY.dragging) {
             data = this.scrollY;
+            progress = data.getProgress(this, y, x);
         } else {
             return;
         }
-        float progress = data.getProgress(this, x, y);
-        data.animateTo(this, (int) (progress * (data.getScrollSize() - data.getVisibleSize(this) + data.getThickness())));
+        progress = MathUtils.clamp(progress, 0f, 1f);
+        data.scrollTo(this, (int) (progress * (data.getScrollSize() - data.getVisibleSize(this) + data.getThickness())));
     }
 
     public boolean isInsideScrollbarArea(int x, int y) {
@@ -190,17 +195,21 @@ public class ScrollArea extends Area {
         this.scrollBarBackgroundColor = scrollBarBackgroundColor;
     }
 
+    public boolean isDragging() {
+        return (this.scrollX != null && this.scrollX.isDragging()) || (this.scrollY != null && this.scrollY.isDragging());
+    }
+
     /**
      * This method is responsible for drawing a scroll bar
      */
     @SideOnly(Side.CLIENT)
     public void drawScrollbar() {
-        boolean b = false;
+        boolean isXActive = false; // micro optimisation
         if (this.scrollX != null && this.scrollX.isScrollBarActive(this, false)) {
-            b = true;
+            isXActive = true;
             this.scrollX.drawScrollbar(this);
         }
-        if (this.scrollY != null && this.scrollY.isScrollBarActive(this, b)) {
+        if (this.scrollY != null && this.scrollY.isScrollBarActive(this, isXActive)) {
             this.scrollY.drawScrollbar(this);
         }
     }

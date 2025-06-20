@@ -1,6 +1,6 @@
 package com.cleanroommc.modularui.drawable.text;
 
-import com.cleanroommc.modularui.ClientEventHandler;
+import com.cleanroommc.modularui.screen.ClientScreenHandler;
 
 import net.minecraft.client.resources.I18n;
 
@@ -48,11 +48,20 @@ public class LangKey extends BaseKey {
 
     @Override
     public String get() {
-        if (this.time == ClientEventHandler.getTicks()) {
+        if (this.time == ClientScreenHandler.getTicks()) {
             return this.string;
         }
-        this.time = ClientEventHandler.getTicks();
+        this.time = ClientScreenHandler.getTicks();
         this.string = I18n.format(Objects.requireNonNull(this.keySupplier.get()), this.argsSupplier.get()).replaceAll("\\\\n", "\n");
         return string;
+    }
+
+    @Override
+    public String getFormatted(@Nullable FormattingState parentFormatting) {
+        Object[] args = this.argsSupplier.get();
+        if (args == null || args.length == 0) return super.getFormatted(parentFormatting);
+        String text = Objects.requireNonNull(this.keySupplier.get());
+        text = FontRenderHelper.formatArgs(args, FormattingState.merge(parentFormatting, getFormatting()), text, true);
+        return FontRenderHelper.format(getFormatting(), parentFormatting, text);
     }
 }

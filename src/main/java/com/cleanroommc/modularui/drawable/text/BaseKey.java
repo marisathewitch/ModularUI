@@ -9,39 +9,39 @@ import org.jetbrains.annotations.Nullable;
 
 public abstract class BaseKey implements IKey {
 
-    private TextFormatting[] formatting;
+    private FormattingState formatting;
 
     @Override
-    public String getFormatted() {
-        if (this.formatting == null) return get();
-        if (FontRenderHelper.isReset(this.formatting)) return TextFormatting.RESET + get();
-        return FontRenderHelper.getFormatting(this.formatting, new StringBuilder()).append(get()).append(TextFormatting.RESET).toString();
+    public String getFormatted(@Nullable FormattingState parentFormatting) {
+        return FontRenderHelper.format(this.formatting, parentFormatting, get());
     }
 
     @Override
-    public BaseKey format(TextFormatting formatting) {
+    public BaseKey style(@Nullable TextFormatting formatting) {
         if (this.formatting == null) {
-            this.formatting = FontRenderHelper.createFormattingState();
+            this.formatting = new FormattingState();
         }
-        FontRenderHelper.addAfter(this.formatting, formatting);
+        if (formatting == null) this.formatting.forceDefaultColor();
+        else this.formatting.add(formatting, false);
         return this;
     }
 
-    @Nullable
-    public TextFormatting[] getFormatting() {
+    @Override
+    public IKey removeStyle() {
+        if (this.formatting != null) {
+            this.formatting.reset();
+        }
+        return this;
+    }
+
+    @Override
+    public @Nullable FormattingState getFormatting() {
         return formatting;
     }
 
     @Override
     public String toString() {
         return getFormatted();
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) return true;
-        if (!(obj instanceof IKey key)) return false;
-        return getFormatted().equals(key.getFormatted());
     }
 
     @Override

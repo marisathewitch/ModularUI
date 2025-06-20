@@ -19,6 +19,11 @@ public interface IRichTextBuilder<T extends IRichTextBuilder<T>> {
         return getThis();
     }
 
+    default T addLine(String s) {
+        getRichText().add(s).newLine();
+        return getThis();
+    }
+
     default T addLine(ITextLine line) {
         getRichText().addLine(line);
         return getThis();
@@ -39,6 +44,14 @@ public interface IRichTextBuilder<T extends IRichTextBuilder<T>> {
 
     default T spaceLine(int pixelSpace) {
         return addLine(Spacer.of(pixelSpace));
+    }
+
+    default T spaceLine() {
+        return addLine(Spacer.SPACER_2PX);
+    }
+
+    default T emptyLine() {
+        return addLine(Spacer.LINE_SPACER);
     }
 
     default T addElements(Iterable<IDrawable> drawables) {

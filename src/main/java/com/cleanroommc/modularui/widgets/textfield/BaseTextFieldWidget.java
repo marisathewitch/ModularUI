@@ -1,5 +1,7 @@
 package com.cleanroommc.modularui.widgets.textfield;
 
+import com.cleanroommc.modularui.ModularUI;
+import com.cleanroommc.modularui.ModularUIConfig;
 import com.cleanroommc.modularui.api.ITheme;
 import com.cleanroommc.modularui.api.widget.IFocusedWidget;
 import com.cleanroommc.modularui.api.widget.IWidget;
@@ -8,16 +10,19 @@ import com.cleanroommc.modularui.drawable.Stencil;
 import com.cleanroommc.modularui.screen.viewport.ModularGuiContext;
 import com.cleanroommc.modularui.theme.WidgetTextFieldTheme;
 import com.cleanroommc.modularui.utils.Alignment;
-import com.cleanroommc.modularui.widget.ScrollWidget;
+import com.cleanroommc.modularui.widget.AbstractScrollWidget;
 import com.cleanroommc.modularui.widget.scroll.HorizontalScrollData;
 import com.cleanroommc.modularui.widget.scroll.ScrollData;
+import com.cleanroommc.modularui.widgets.VoidWidget;
 
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiScreen;
 
 import org.jetbrains.annotations.NotNull;
 import org.lwjgl.input.Keyboard;
 
 import java.text.DecimalFormat;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -25,7 +30,7 @@ import java.util.regex.Pattern;
 /**
  * The base of a text input widget. Handles mouse/keyboard input and rendering.
  */
-public class BaseTextFieldWidget<W extends BaseTextFieldWidget<W>> extends ScrollWidget<W> implements IFocusedWidget {
+public class BaseTextFieldWidget<W extends BaseTextFieldWidget<W>> extends AbstractScrollWidget<VoidWidget, W> implements IFocusedWidget {
 
     public static final DecimalFormat format = new DecimalFormat("###.###");
 
@@ -38,17 +43,26 @@ public class BaseTextFieldWidget<W extends BaseTextFieldWidget<W>> extends Scrol
     public static final Pattern ANY = Pattern.compile(".*");
     private static final Pattern BASE_PATTERN = Pattern.compile("[^§]");
 
+    private static final int CURSOR_BLINK_RATE = 10;
+    private static final int DOUBLE_CLICK_THRESHOLD = 300; // max time between clicks to count as double-click in ms
+
     protected TextFieldHandler handler = new TextFieldHandler(this);
     protected TextFieldRenderer renderer = new TextFieldRenderer(this.handler);
     protected Alignment textAlignment = Alignment.CenterLeft;
+    protected List<String> lastText;
     protected int scrollOffset = 0;
     protected float scale = 1f;
+    protected boolean focusOnGuiOpen;
     private int cursorTimer;
+    protected long lastClickTime = 0;
 
-    protected boolean changedTextColor = false;
+    protected Integer textColor;
+    protected Integer markedColor;
+    protected String hintText = null;
+    protected Integer hintTextColor;
 
     public BaseTextFieldWidget() {
-        super(new HorizontalScrollData());
+        super(new HorizontalScrollData(), null);
         this.handler.setRenderer(this.renderer);
         this.handler.setScrollArea(getScrollArea());
         padding(4, 0);
@@ -60,7 +74,7 @@ public class BaseTextFieldWidget<W extends BaseTextFieldWidget<W>> extends Scrol
     }
 
     @Override
-    public boolean addChild(IWidget child, int index) {
+    public boolean isChildValid(VoidWidget child) {
         return false;
     }
 
@@ -68,15 +82,21 @@ public class BaseTextFieldWidget<W extends BaseTextFieldWidget<W>> extends Scrol
     public void onInit() {
         super.onInit();
         this.handler.setGuiContext(getContext());
-        if (!this.changedTextColor) {
-            this.renderer.setColor(getWidgetTheme(getContext().getTheme()).getTextColor());
+    }
+
+    @Override
+    public void afterInit() {
+        super.afterInit();
+        if (this.focusOnGuiOpen) {
+            getContext().focus(this);
+            this.handler.markAll();
         }
     }
 
     @Override
     public void onUpdate() {
         super.onUpdate();
-        if (isFocused() && ++this.cursorTimer == 30) {
+        if (isFocused() && ++this.cursorTimer == CURSOR_BLINK_RATE) {
             this.renderer.toggleCursor();
             this.cursorTimer = 0;
         }
@@ -85,18 +105,34 @@ public class BaseTextFieldWidget<W extends BaseTextFieldWidget<W>> extends Scrol
     @Override
     public void preDraw(ModularGuiContext context, boolean transformed) {
         if (transformed) {
-            drawText(context);
+            WidgetTextFieldTheme widgetTheme = (WidgetTextFieldTheme) getWidgetTheme(context.getTheme());
+            this.renderer.setColor(this.textColor != null ? this.textColor : widgetTheme.getTextColor());
+            this.renderer.setCursorColor(this.textColor != null ? this.textColor : widgetTheme.getTextColor());
+            this.renderer.setMarkedColor(this.markedColor != null ? this.markedColor : widgetTheme.getMarkedColor());
+            setupDrawText(context, widgetTheme);
+            drawText(context, widgetTheme);
         } else {
             Stencil.apply(1, 1, getArea().w() - 2, getArea().h() - 2, context);
         }
     }
 
-    public void drawText(ModularGuiContext context) {
+    protected void setupDrawText(ModularGuiContext context, WidgetTextFieldTheme widgetTheme) {
         this.renderer.setSimulate(false);
         this.renderer.setScale(this.scale);
         this.renderer.setAlignment(this.textAlignment, -2, getArea().height);
-        this.renderer.draw(this.handler.getText());
-        getScrollArea().getScrollX().setScrollSize(Math.max(0, (int) (this.renderer.getLastWidth() + 0.5f)));
+    }
+
+    protected void drawText(ModularGuiContext context, WidgetTextFieldTheme widgetTheme) {
+        if (this.handler.isTextEmpty() && this.hintText != null) {
+            int c = this.renderer.getColor();
+            int hintColor = this.hintTextColor != null ? this.hintTextColor : widgetTheme.getHintColor();
+            this.renderer.setColor(hintColor);
+            this.renderer.draw(Collections.singletonList(this.hintText));
+            this.renderer.setColor(c);
+        } else {
+            this.renderer.draw(this.handler.getText());
+        }
+        getScrollArea().getScrollX().setScrollSize(Math.max(0, (int) (this.renderer.getLastActualWidth() + 0.5f)));
     }
 
     @Override
@@ -113,6 +149,7 @@ public class BaseTextFieldWidget<W extends BaseTextFieldWidget<W>> extends Scrol
     public void onFocus(ModularGuiContext context) {
         this.cursorTimer = 0;
         this.renderer.setCursor(true);
+        this.lastText = new ArrayList<>(this.handler.getText());
     }
 
     @Override
@@ -127,20 +164,45 @@ public class BaseTextFieldWidget<W extends BaseTextFieldWidget<W>> extends Scrol
     public @NotNull Result onMousePressed(int mouseButton) {
         Result result = super.onMousePressed(mouseButton);
         if (result != Result.IGNORE) {
-            return result;
+            return Result.SUCCESS; // keep focused
         }
         if (!isHovering()) {
             return Result.IGNORE;
         }
-        int x = getContext().getMouseX() + getScrollX();
-        int y = getContext().getMouseY() + getScrollY();
-        this.handler.setCursor(this.renderer.getCursorPos(this.handler.getText(), x, y), true);
+        if (mouseButton == 1) {
+            this.handler.clear();
+        } else {
+            // the current transformation does not include the transformation of the children (the scroll) so we need to manually transform here
+            int x = getContext().getMouseX() + getScrollX();
+            int y = getContext().getMouseY() + getScrollY();
+            long now = Minecraft.getSystemTime();
+            if (this.lastClickTime < 0) {
+                // triple click
+                if (now + this.lastClickTime < DOUBLE_CLICK_THRESHOLD) {
+                    this.handler.markAll();
+                    this.lastClickTime = 0;
+                    return Result.SUCCESS;
+                }
+                this.lastClickTime = 0;
+            } else if (this.lastClickTime > 0) {
+                // double click
+                if (now - this.lastClickTime < DOUBLE_CLICK_THRESHOLD) {
+                    this.handler.markCurrentLine();
+                    this.lastClickTime = -Minecraft.getSystemTime();
+                    return Result.SUCCESS;
+                }
+                this.lastClickTime = 0;
+            }
+            // single click
+            this.handler.setCursor(this.renderer.getCursorPos(this.handler.getText(), x, y), true);
+            this.lastClickTime = Minecraft.getSystemTime();
+        }
         return Result.SUCCESS;
     }
 
     @Override
     public void onMouseDrag(int mouseButton, long timeSinceClick) {
-        if (isFocused()) {
+        if (isFocused() && !getScrollArea().isDragging()) {
             int x = getContext().getMouseX() + getScrollX();
             int y = getContext().getMouseY() + getScrollY();
             this.handler.setMainCursor(this.renderer.getCursorPos(this.handler.getText(), x, y), true);
@@ -153,6 +215,7 @@ public class BaseTextFieldWidget<W extends BaseTextFieldWidget<W>> extends Scrol
             return Result.IGNORE;
         }
         switch (keyCode) {
+            case Keyboard.KEY_NUMPADENTER:
             case Keyboard.KEY_RETURN:
                 if (getMaxLines() > 1) {
                     this.handler.newLine();
@@ -161,6 +224,10 @@ public class BaseTextFieldWidget<W extends BaseTextFieldWidget<W>> extends Scrol
                 }
                 return Result.SUCCESS;
             case Keyboard.KEY_ESCAPE:
+                if (ModularUIConfig.escRestoreLastText) {
+                    this.handler.clear();
+                    this.handler.insert(this.lastText);
+                }
                 getContext().removeFocus();
                 return Result.SUCCESS;
             case Keyboard.KEY_LEFT: {
@@ -196,8 +263,11 @@ public class BaseTextFieldWidget<W extends BaseTextFieldWidget<W>> extends Scrol
             GuiScreen.setClipboardString(this.handler.getSelectedText());
             return Result.SUCCESS;
         } else if (GuiScreen.isKeyComboCtrlV(keyCode)) {
+            if (this.handler.hasTextMarked()) {
+                this.handler.delete();
+            }
             // paste copied text in marked text
-            this.handler.insert(GuiScreen.getClipboardString());
+            this.handler.insert(GuiScreen.getClipboardString().replace("§", ""));
             return Result.SUCCESS;
         } else if (GuiScreen.isKeyComboCtrlX(keyCode) && this.handler.hasTextMarked()) {
             // copy and delete copied text
@@ -208,7 +278,10 @@ public class BaseTextFieldWidget<W extends BaseTextFieldWidget<W>> extends Scrol
             // mark whole text
             this.handler.markAll();
             return Result.SUCCESS;
-        } else if (BASE_PATTERN.matcher(String.valueOf(character)).matches()) {
+        } else if (BASE_PATTERN.matcher(String.valueOf(character)).matches() && handler.test(String.valueOf(character))) {
+            if (this.handler.hasTextMarked()) {
+                this.handler.delete();
+            }
             // insert typed char
             this.handler.insert(String.valueOf(character));
             return Result.SUCCESS;
@@ -222,6 +295,10 @@ public class BaseTextFieldWidget<W extends BaseTextFieldWidget<W>> extends Scrol
 
     public ScrollData getScrollData() {
         return getScrollArea().getScrollX();
+    }
+
+    public List<String> getLastText() {
+        return lastText;
     }
 
     public W setTextAlignment(Alignment textAlignment) {
@@ -252,8 +329,34 @@ public class BaseTextFieldWidget<W extends BaseTextFieldWidget<W>> extends Scrol
     }*/
 
     public W setTextColor(int color) {
-        this.renderer.setColor(color);
-        this.changedTextColor = true;
+        this.textColor = color;
+        return getThis();
+    }
+
+    public W setMarkedColor(int color) {
+        this.markedColor = color;
+        return getThis();
+    }
+
+    public W setFocusOnGuiOpen(boolean focusOnGuiOpen) {
+        this.focusOnGuiOpen = focusOnGuiOpen;
+        return getThis();
+    }
+
+    /**
+     * Sets a constant hint text. The hint is displayed in a less noticeable color when the field is empty.
+     * The color is by default obtained from the current them, but can be overriden with {@link #hintColor(int)}.
+     *
+     * @param hint hint text to display
+     * @return this
+     */
+    public W hintText(String hint) {
+        this.hintText = hint;
+        return getThis();
+    }
+
+    public W hintColor(int color) {
+        this.hintTextColor = color;
         return getThis();
     }
 

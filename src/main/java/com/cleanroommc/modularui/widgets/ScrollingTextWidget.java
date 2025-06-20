@@ -6,6 +6,10 @@ import com.cleanroommc.modularui.screen.viewport.ModularGuiContext;
 import com.cleanroommc.modularui.theme.WidgetTheme;
 import com.cleanroommc.modularui.utils.Alignment;
 
+import org.jetbrains.annotations.Nullable;
+
+import java.util.function.IntSupplier;
+
 public class ScrollingTextWidget extends TextWidget {
 
     private static final int pauseTime = 60;
@@ -57,9 +61,9 @@ public class ScrollingTextWidget extends TextWidget {
     public void draw(ModularGuiContext context, WidgetTheme widgetTheme) {
         checkString();
         TextRenderer renderer = TextRenderer.SHARED;
-        renderer.setColor(getColor());
+        renderer.setColor(getColor() != null ? getColor().getAsInt() : widgetTheme.getTextColor());
         renderer.setAlignment(getAlignment(), getArea().w() + 1, getArea().h());
-        renderer.setShadow(isShadow());
+        renderer.setShadow(isShadow() != null ? isShadow() : widgetTheme.getTextShadow());
         renderer.setPos(getArea().getPadding().left, getArea().getPadding().top);
         renderer.setScale(getScale());
         renderer.setSimulate(false);
@@ -87,6 +91,11 @@ public class ScrollingTextWidget extends TextWidget {
 
     @Override
     public ScrollingTextWidget color(int color) {
+        return color(() -> color);
+    }
+
+    @Override
+    public ScrollingTextWidget color(@Nullable IntSupplier color) {
         return (ScrollingTextWidget) super.color(color);
     }
 
@@ -96,7 +105,7 @@ public class ScrollingTextWidget extends TextWidget {
     }
 
     @Override
-    public ScrollingTextWidget shadow(boolean shadow) {
+    public ScrollingTextWidget shadow(@Nullable Boolean shadow) {
         return (ScrollingTextWidget) super.shadow(shadow);
     }
 

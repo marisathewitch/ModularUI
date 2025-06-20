@@ -1,7 +1,16 @@
 package com.cleanroommc.modularui.api.drawable;
 
+import com.cleanroommc.modularui.api.IJsonSerializable;
 import com.cleanroommc.modularui.drawable.Icon;
-import com.cleanroommc.modularui.drawable.text.*;
+import com.cleanroommc.modularui.drawable.text.AnimatedText;
+import com.cleanroommc.modularui.drawable.text.CompoundKey;
+import com.cleanroommc.modularui.drawable.text.DynamicKey;
+import com.cleanroommc.modularui.drawable.text.FormattingState;
+import com.cleanroommc.modularui.drawable.text.KeyIcon;
+import com.cleanroommc.modularui.drawable.text.LangKey;
+import com.cleanroommc.modularui.drawable.text.StringKey;
+import com.cleanroommc.modularui.drawable.text.StyledText;
+import com.cleanroommc.modularui.drawable.text.TextRenderer;
 import com.cleanroommc.modularui.screen.viewport.GuiContext;
 import com.cleanroommc.modularui.theme.WidgetTheme;
 import com.cleanroommc.modularui.utils.Alignment;
@@ -16,12 +25,13 @@ import com.google.gson.JsonObject;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.function.IntSupplier;
 import java.util.function.Supplier;
 
 /**
  * This represents a piece of text in a GUI.
  */
-public interface IKey extends IDrawable {
+public interface IKey extends IDrawable, IJsonSerializable {
 
     int TEXT_COLOR = 0xFF404040;
 
@@ -30,6 +40,30 @@ public interface IKey extends IDrawable {
     IKey EMPTY = str("");
     IKey LINE_FEED = str("\n");
     IKey SPACE = str(" ");
+
+    // Formatting for convenience
+    TextFormatting BLACK = TextFormatting.BLACK;
+    TextFormatting DARK_BLUE = TextFormatting.DARK_BLUE;
+    TextFormatting DARK_GREEN = TextFormatting.DARK_GREEN;
+    TextFormatting DARK_AQUA = TextFormatting.DARK_AQUA;
+    TextFormatting DARK_RED = TextFormatting.DARK_RED;
+    TextFormatting DARK_PURPLE = TextFormatting.DARK_PURPLE;
+    TextFormatting GOLD = TextFormatting.GOLD;
+    TextFormatting GRAY = TextFormatting.GRAY;
+    TextFormatting DARK_GRAY = TextFormatting.DARK_GRAY;
+    TextFormatting BLUE = TextFormatting.BLUE;
+    TextFormatting GREEN = TextFormatting.GREEN;
+    TextFormatting AQUA = TextFormatting.AQUA;
+    TextFormatting RED = TextFormatting.RED;
+    TextFormatting LIGHT_PURPLE = TextFormatting.LIGHT_PURPLE;
+    TextFormatting YELLOW = TextFormatting.YELLOW;
+    TextFormatting WHITE = TextFormatting.WHITE;
+    TextFormatting OBFUSCATED = TextFormatting.OBFUSCATED;
+    TextFormatting BOLD = TextFormatting.BOLD;
+    TextFormatting STRIKETHROUGH = TextFormatting.STRIKETHROUGH;
+    TextFormatting UNDERLINE = TextFormatting.UNDERLINE;
+    TextFormatting ITALIC = TextFormatting.ITALIC;
+    TextFormatting RESET = TextFormatting.RESET;
 
     /**
      * Creates a translated text.
@@ -130,7 +164,7 @@ public interface IKey extends IDrawable {
      * @param getter string supplier
      * @return dynamic text key
      */
-    static IKey dynamic(@NotNull Supplier<String> getter) {
+    static IKey dynamic(@NotNull Supplier<@NotNull String> getter) {
         return new DynamicKey(getter);
     }
 
@@ -140,10 +174,18 @@ public interface IKey extends IDrawable {
     String get();
 
     /**
+     * @param parentFormatting formatting of the parent in case of composite keys
+     * @return the current formatted string
+     */
+    default String getFormatted(@Nullable FormattingState parentFormatting) {
+        return get();
+    }
+
+    /**
      * @return the current formatted string
      */
     default String getFormatted() {
-        return get();
+        return getFormatted(null);
     }
 
     @SideOnly(Side.CLIENT)
@@ -170,18 +212,42 @@ public interface IKey extends IDrawable {
         return new AnimatedText(this);
     }
 
-    IKey format(TextFormatting formatting);
+    /**
+     * @return a formatting state of this key
+     */
+    default @Nullable FormattingState getFormatting() {
+        return null;
+    }
 
-    default IKey format(TextFormatting... formatting) {
-        for (TextFormatting tf : formatting) format(tf);
+    /**
+     * Set text formatting to this key. If {@link IKey#RESET} is used, then that's applied first and then all other formatting of this key.
+     * With {@link null}, you can remove a color formatting. No matter the parents color, the default color will be used.
+     *
+     * @param formatting a formatting rul
+     * @return this
+     */
+    IKey style(@Nullable TextFormatting formatting);
+
+    default IKey style(TextFormatting... formatting) {
+        for (TextFormatting tf : formatting) style(tf);
         return this;
     }
+
+    default IKey removeFormatColor() {
+        return style((TextFormatting) null);
+    }
+
+    IKey removeStyle();
 
     default StyledText alignment(Alignment alignment) {
         return withStyle().alignment(alignment);
     }
 
     default StyledText color(int color) {
+        return withStyle().color(() -> color);
+    }
+
+    default StyledText color(@Nullable IntSupplier color) {
         return withStyle().color(color);
     }
 
@@ -189,7 +255,7 @@ public interface IKey extends IDrawable {
         return withStyle().scale(scale);
     }
 
-    default StyledText shadow(boolean shadow) {
+    default StyledText shadow(@Nullable Boolean shadow) {
         return withStyle().shadow(shadow);
     }
 

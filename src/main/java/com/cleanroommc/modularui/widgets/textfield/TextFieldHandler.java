@@ -96,7 +96,7 @@ public class TextFieldHandler {
                 this.renderer.setSimulate(true);
                 this.renderer.draw(this.text);
                 this.renderer.setSimulate(false);
-                this.scrollArea.getScrollX().setScrollSize((int) (this.renderer.getLastWidth() + 0.5f));
+                this.scrollArea.getScrollX().setScrollSize((int) this.renderer.getLastActualWidth());
                 if (this.scrollArea.getScrollX().isScrollBarActive(this.scrollArea)) {
                     String line = this.text.get(main.y);
                     int scrollTo = (int) this.renderer.getPosOf(this.renderer.measureLines(Collections.singletonList(line)), main).x;
@@ -226,12 +226,25 @@ public class TextFieldHandler {
         setMainCursor(this.text.size() - 1, this.text.get(this.text.size() - 1).length(), true);
     }
 
+    public void markCurrentLine() {
+        setOffsetCursor(getMainCursor().y, 0);
+        setMainCursor(getMainCursor().y, this.text.get(getMainCursor().y).length(), true);
+    }
+
     public String getTextAsString() {
         return JOINER.join(this.text);
     }
 
     public List<String> getText() {
         return this.text;
+    }
+
+    public boolean isTextEmpty() {
+        if (this.text.isEmpty()) return true;
+        for (String line : this.text) {
+            if (!line.isEmpty()) return false;
+        }
+        return true;
     }
 
     public void onChanged() {
@@ -322,6 +335,11 @@ public class TextFieldHandler {
         this.text.set(this.cursor.y, line.substring(0, this.cursor.x));
         this.text.add(this.cursor.y + 1, line.substring(this.cursor.x));
         setCursor(this.cursor.y + 1, 0, false);
+    }
+
+    public void clear() {
+        markAll();
+        delete();
     }
 
     public void delete() {

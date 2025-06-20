@@ -30,7 +30,7 @@ public class ModularGuiContext extends GuiContext {
     public final ModularScreen screen;
     private LocatedWidget focusedWidget = LocatedWidget.EMPTY;
     @Nullable
-    private IGuiElement hovered;
+    private IWidget hovered;
     private int timeHovered = 0;
     private final HoveredIterable hoveredWidgets;
 
@@ -41,7 +41,7 @@ public class ModularGuiContext extends GuiContext {
 
     public List<Consumer<ModularGuiContext>> postRenderCallbacks = new ArrayList<>();
 
-    private JeiSettingsImpl jeiSettings;
+    private UISettings settings;
 
     public ModularGuiContext(ModularScreen screen) {
         this.screen = screen;
@@ -81,7 +81,7 @@ public class ModularGuiContext extends GuiContext {
      * @return the hovered widget (widget directly below the mouse)
      */
     @Nullable
-    public IGuiElement getHovered() {
+    public IWidget getHovered() {
         return this.hovered;
     }
 
@@ -310,7 +310,7 @@ public class ModularGuiContext extends GuiContext {
 
     @ApiStatus.Internal
     public void onFrameUpdate() {
-        IGuiElement hovered = this.screen.getPanelManager().getTopWidget();
+        IWidget hovered = this.screen.getPanelManager().getTopWidget();
         if (hasDraggable() && (this.lastDragX != getAbsMouseX() || this.lastDragY != getAbsMouseY())) {
             this.lastDragX = getAbsMouseX();
             this.lastDragY = getAbsMouseY();
@@ -326,7 +326,7 @@ public class ModularGuiContext extends GuiContext {
             this.timeHovered = 0;
             if (this.hovered != null) {
                 this.hovered.onMouseStartHover();
-                if (this.hovered instanceof IVanillaSlot vanillaSlot) {
+                if (this.hovered instanceof IVanillaSlot vanillaSlot && vanillaSlot.handleAsVanillaSlot()) {
                     this.screen.getScreenWrapper().setHoveredSlot(vanillaSlot.getVanillaSlot());
                 } else {
                     this.screen.getScreenWrapper().setHoveredSlot(null);
@@ -351,22 +351,26 @@ public class ModularGuiContext extends GuiContext {
         return this;
     }
 
+    public UISettings getUISettings() {
+        if (this.settings == null) {
+            throw new IllegalStateException("The screen is not yet initialised!");
+        }
+        return this.settings;
+    }
+
     public JeiSettingsImpl getJeiSettings() {
         if (this.screen.isOverlay()) {
             throw new IllegalStateException("Overlays don't have JEI settings!");
         }
-        if (this.jeiSettings == null) {
-            throw new IllegalStateException("The screen is not yet initialised!");
-        }
-        return this.jeiSettings;
+        return (JeiSettingsImpl) getUISettings().getJeiSettings();
     }
 
     @ApiStatus.Internal
-    public void setJeiSettings(JeiSettingsImpl jeiSettings) {
-        if (this.jeiSettings != null) {
-            throw new IllegalStateException("Tried to set jei settings twice");
+    public void setSettings(UISettings settings) {
+        if (this.settings != null) {
+            throw new IllegalStateException("Tried to set settings twice");
         }
-        this.jeiSettings = jeiSettings;
+        this.settings = settings;
     }
 
     private static class HoveredIterable implements Iterable<IGuiElement> {

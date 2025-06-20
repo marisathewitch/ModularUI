@@ -10,11 +10,13 @@
     "GuiContainerAccessor",
     "GuiContainerMixin",
     "GuiScreenAccessor",
+    "GuiUtilsMixin",
     "KeyBindAccess",
     "MinecraftMixin"
   ],
   "mixins": [
     "ContainerAccessor",
-    "FontRendererAccessor"
+    "FontRendererAccessor",
+    "InventoryCraftingAccessor"
   ]
 }

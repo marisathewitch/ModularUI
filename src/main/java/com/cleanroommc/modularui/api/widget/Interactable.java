@@ -90,11 +90,13 @@ public interface Interactable {
     }
 
     /**
-     * Called when this widget is focused or when the mouse is above this widget
+     * Called when this widget is focused or when the mouse is above this widget.
+     * This method should return true if it can scroll at all and not if it scrolled right now.
+     * If this scroll view scrolled to the end and this returns false, the scroll will get passed through another scroll view below this.
      *
      * @param scrollDirection up or down
-     * @param amount          usually irrelevant
-     * @return if other widgets should get called too
+     * @param amount          amount scrolled by (usually irrelevant)
+     * @return true if this widget can be scrolled at all
      */
     default boolean onMouseScroll(ModularScreen.UpOrDown scrollDirection, int amount) {
         return false;
@@ -106,8 +108,7 @@ public interface Interactable {
      * @param mouseButton    mouse button that drags
      * @param timeSinceClick time since drag began
      */
-    default void onMouseDrag(int mouseButton, long timeSinceClick) {
-    }
+    default void onMouseDrag(int mouseButton, long timeSinceClick) {}
 
     /**
      * @return if left or right ctrl/cmd is pressed
@@ -151,21 +152,30 @@ public interface Interactable {
     }
 
     enum Result {
+
         /**
          * Nothing happens.
          */
-        IGNORE,
+        IGNORE(false, false),
         /**
          * Interaction is accepted, but other widgets will get checked.
          */
-        ACCEPT,
+        ACCEPT(true, false),
         /**
          * Interaction is rejected and no other widgets will get checked.
          */
-        STOP,
+        STOP(false, true),
         /**
          * Interaction is accepted and no other widgets will get checked.
          */
-        SUCCESS
+        SUCCESS(true, true);
+
+        public final boolean accepts;
+        public final boolean stops;
+
+        Result(boolean accepts, boolean stops) {
+            this.accepts = accepts;
+            this.stops = stops;
+        }
     }
 }

@@ -10,11 +10,15 @@ import net.minecraft.util.text.TextFormatting;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 
+import org.jetbrains.annotations.Nullable;
+
+import java.util.function.IntSupplier;
+
 public class StyledText extends BaseKey {
 
     private final IKey key;
     private Alignment alignment = Alignment.Center;
-    private Integer color = null;
+    private IntSupplier color = null;
     private Boolean shadow = null;
     private float scale = 1f;
 
@@ -36,7 +40,7 @@ public class StyledText extends BaseKey {
     @Override
     public void draw(GuiContext context, int x, int y, int width, int height, WidgetTheme widgetTheme) {
         renderer.setAlignment(this.alignment, width, height);
-        renderer.setColor(this.color != null ? this.color : widgetTheme.getColor());
+        renderer.setColor(this.color != null ? this.color.getAsInt() : widgetTheme.getColor());
         renderer.setScale(this.scale);
         renderer.setPos(x, y);
         renderer.setShadow(this.shadow != null ? this.shadow : widgetTheme.getTextShadow());
@@ -47,7 +51,7 @@ public class StyledText extends BaseKey {
         return this.alignment;
     }
 
-    public int getColor() {
+    public @Nullable IntSupplier getColor() {
         return this.color;
     }
 
@@ -55,13 +59,13 @@ public class StyledText extends BaseKey {
         return this.scale;
     }
 
-    public boolean isShadow() {
+    public @Nullable Boolean isShadow() {
         return this.shadow;
     }
 
     @Override
-    public BaseKey format(TextFormatting formatting) {
-        this.key.format(formatting);
+    public BaseKey style(TextFormatting formatting) {
+        this.key.style(formatting);
         return this;
     }
 
@@ -73,6 +77,11 @@ public class StyledText extends BaseKey {
 
     @Override
     public StyledText color(int color) {
+        return color(() -> color);
+    }
+
+    @Override
+    public StyledText color(@Nullable IntSupplier color) {
         this.color = color;
         return this;
     }
@@ -84,7 +93,7 @@ public class StyledText extends BaseKey {
     }
 
     @Override
-    public StyledText shadow(boolean shadow) {
+    public StyledText shadow(@Nullable Boolean shadow) {
         this.shadow = shadow;
         return this;
     }

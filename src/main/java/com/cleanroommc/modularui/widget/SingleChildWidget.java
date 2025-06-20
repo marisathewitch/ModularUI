@@ -12,6 +12,10 @@ public class SingleChildWidget<W extends SingleChildWidget<W>> extends Widget<W>
     private IWidget child;
     private List<IWidget> list = Collections.emptyList();
 
+    public IWidget getChild() {
+        return child;
+    }
+
     @Override
     public @NotNull List<IWidget> getChildren() {
         return this.list;
@@ -28,7 +32,7 @@ public class SingleChildWidget<W extends SingleChildWidget<W>> extends Widget<W>
 
         this.child = child;
         if (isValid()) {
-            child.initialise(this);
+            child.initialise(this, true);
         }
         updateList();
         return getThis();

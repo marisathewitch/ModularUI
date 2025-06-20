@@ -3,7 +3,7 @@ package com.cleanroommc.modularui.widgets;
 import com.cleanroommc.modularui.api.ITheme;
 import com.cleanroommc.modularui.api.drawable.IDrawable;
 import com.cleanroommc.modularui.api.widget.Interactable;
-import com.cleanroommc.modularui.drawable.DrawableArray;
+import com.cleanroommc.modularui.drawable.DrawableStack;
 import com.cleanroommc.modularui.drawable.TabTexture;
 import com.cleanroommc.modularui.theme.WidgetTheme;
 import com.cleanroommc.modularui.theme.WidgetThemeSelectable;
@@ -16,6 +16,7 @@ public class PageButton extends Widget<PageButton> implements Interactable {
     private final int index;
     private final PagedWidget.Controller controller;
     private IDrawable inactiveTexture = null;
+    private boolean invert = false;
 
     public PageButton(int index, PagedWidget.Controller controller) {
         this.index = index;
@@ -26,7 +27,7 @@ public class PageButton extends Widget<PageButton> implements Interactable {
     @Override
     public WidgetTheme getWidgetThemeInternal(ITheme theme) {
         WidgetThemeSelectable widgetTheme = theme.getToggleButtonTheme();
-        return isActive() ? widgetTheme : widgetTheme.getSelected();
+        return isActive() ^ invertSelected() ? widgetTheme : widgetTheme.getSelected();
     }
 
     @Override
@@ -57,15 +58,24 @@ public class PageButton extends Widget<PageButton> implements Interactable {
         } else if (background.length == 1) {
             this.inactiveTexture = background[0];
         } else {
-            this.inactiveTexture = new DrawableArray(background);
+            this.inactiveTexture = new DrawableStack(background);
         }
         return this;
     }
 
     public PageButton tab(TabTexture texture, int location) {
-        return background(false, texture.get(location, false))
-                .background(true, texture.get(location, true))
+        return background(invertSelected(), texture.get(location, invertSelected()))
+                .background(!invertSelected(), texture.get(location, !invertSelected()))
                 .disableHoverBackground()
                 .size(texture.getWidth(), texture.getHeight());
+    }
+
+    public PageButton invertSelected(boolean invert) {
+        this.invert = invert;
+        return getThis();
+    }
+
+    public boolean invertSelected() {
+        return this.invert;
     }
 }

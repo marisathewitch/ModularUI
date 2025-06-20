@@ -6,17 +6,25 @@ import com.cleanroommc.modularui.screen.viewport.ModularGuiContext;
 import com.cleanroommc.modularui.theme.WidgetTheme;
 import com.cleanroommc.modularui.utils.Alignment;
 import com.cleanroommc.modularui.widget.Widget;
+import com.cleanroommc.modularui.widget.WidgetTree;
 import com.cleanroommc.modularui.widget.sizer.Box;
 
 import net.minecraft.util.text.TextFormatting;
+
+import org.jetbrains.annotations.Nullable;
+
+import java.util.function.IntSupplier;
 
 public class TextWidget extends Widget<TextWidget> {
 
     private final IKey key;
     private Alignment alignment = Alignment.CenterLeft;
-    private Integer color = null;
+    private IntSupplier color = null;
     private Boolean shadow = null;
     private float scale = 1f;
+
+    private String lastText = null;
+    private String textForDefaultSize = null;
 
     public TextWidget(IKey key) {
         this.key = key;
@@ -25,7 +33,13 @@ public class TextWidget extends Widget<TextWidget> {
     @Override
     public void draw(ModularGuiContext context, WidgetTheme widgetTheme) {
         TextRenderer renderer = TextRenderer.SHARED;
-        renderer.setColor(this.color != null ? this.color : widgetTheme.getTextColor());
+        String text = this.key.getFormatted();
+        if (this.lastText != null && !this.lastText.equals(text)) {
+            // scheduling it would resize it on next frame, but we need it now
+            WidgetTree.resizeInternal(this, false);
+        }
+        this.lastText = text;
+        renderer.setColor(this.color != null ? this.color.getAsInt() : widgetTheme.getTextColor());
         renderer.setAlignment(this.alignment, getArea().w() + this.scale, getArea().h());
         renderer.setShadow(this.shadow != null ? this.shadow : widgetTheme.getTextShadow());
         renderer.setPos(getArea().getPadding().left, getArea().getPadding().top);
@@ -41,34 +55,60 @@ public class TextWidget extends Widget<TextWidget> {
         renderer.setPos(padding.left, padding.top);
         renderer.setScale(this.scale);
         renderer.setSimulate(true);
-        renderer.draw(this.key.getFormatted());
+        renderer.draw(getTextForDefaultSize());
+        renderer.setSimulate(false);
         return renderer;
     }
 
     @Override
     public int getDefaultHeight() {
         float maxWidth;
-        if (resizer() != null && resizer().isWidthCalculated()) {
+        if (resizer().isWidthCalculated()) {
             maxWidth = getArea().width + this.scale;
-        } else if (getParent().resizer() != null && getParent().resizer().isWidthCalculated()) {
+        } else if (getParent().resizer().isWidthCalculated()) {
             maxWidth = getParent().getArea().width + this.scale;
         } else {
             maxWidth = getScreen().getScreenArea().width;
         }
         TextRenderer renderer = simulate(maxWidth);
-        Box padding = getArea().getPadding();
-        return (int) (renderer.getLastHeight() + padding.vertical() + 0.5f);
+        return getWidgetHeight(renderer.getLastActualHeight());
     }
 
     @Override
     public int getDefaultWidth() {
         float maxWidth = getScreen().getScreenArea().width;
-        if (getParent().resizer() != null && getParent().resizer().isWidthCalculated()) {
+        if (getParent().resizer().isWidthCalculated()) {
             maxWidth = getParent().getArea().width;
         }
         TextRenderer renderer = simulate(maxWidth);
+        return getWidgetWidth(renderer.getLastActualWidth());
+    }
+
+    protected int getWidgetWidth(float actualTextWidth) {
         Box padding = getArea().getPadding();
-        return (int) (renderer.getLastWidth() + padding.horizontal() + 0.5f);
+        return Math.max(1, (int) Math.ceil(actualTextWidth + padding.horizontal()));
+    }
+
+    protected int getWidgetHeight(float actualTextHeight) {
+        Box padding = getArea().getPadding();
+        return Math.max(1, (int) Math.ceil(actualTextHeight + padding.vertical()));
+    }
+
+    /**
+     * Makes sure the used text for {@link #getDefaultWidth()} and {@link #getDefaultHeight()} is always the same.
+     * Also sets the last rendered text.
+     */
+    protected String getTextForDefaultSize() {
+        if (this.textForDefaultSize == null) {
+            this.textForDefaultSize = this.key.getFormatted();
+            this.lastText = this.textForDefaultSize;
+        }
+        return this.textForDefaultSize;
+    }
+
+    @Override
+    public void postResize() {
+        this.textForDefaultSize = null;
     }
 
     public IKey getKey() {
@@ -83,11 +123,11 @@ public class TextWidget extends Widget<TextWidget> {
         return this.scale;
     }
 
-    public int getColor() {
+    public @Nullable IntSupplier getColor() {
         return this.color;
     }
 
-    public boolean isShadow() {
+    public @Nullable Boolean isShadow() {
         return this.shadow;
     }
 
@@ -97,6 +137,10 @@ public class TextWidget extends Widget<TextWidget> {
     }
 
     public TextWidget color(int color) {
+        return color(() -> color);
+    }
+
+    public TextWidget color(@Nullable IntSupplier color) {
         this.color = color;
         return this;
     }
@@ -106,13 +150,13 @@ public class TextWidget extends Widget<TextWidget> {
         return this;
     }
 
-    public TextWidget shadow(boolean shadow) {
+    public TextWidget shadow(@Nullable Boolean shadow) {
         this.shadow = shadow;
         return this;
     }
 
-    public TextWidget format(TextFormatting formatting) {
-        this.key.format(formatting);
+    public TextWidget style(TextFormatting formatting) {
+        this.key.style(formatting);
         return this;
     }
 }
