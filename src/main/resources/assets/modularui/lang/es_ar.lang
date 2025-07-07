@@ -1,1 +1,13 @@
-
+modularui.test=Texto de Prueba\n2. Línea
+modularui.tooltip.shift=§bMantené apretado Mayús
+modularui.increment.tooltip=§7Hacé clic para aumentar el número por §6%d§7\nMantené apretado Mayús[§6%d§7], CTRL[§6%d§7], o Mayús+CTRL[§6%d§7]
+modularui.decrement.tooltip=§7Hacé clic para reducir el número por §6%d§7\nMantené apretado Mayús[§6%d§7], CTRL[§6%d§7], o Mayús+CTRL[§6%d§7]
+modularui.amount=§9Cantidad: %,d
+modularui.fluid.empty=Vacío
+modularui.fluid.amount=§9Cantidad: %s/%s %s
+modularui.fluid.phantom.amount=§9Cantidad: %s%s
+modularui.fluid.phantom.control=§7Girá hacia arriba la rueda para aumentar la cantidad, hacia abajo para reducirla.\n§7Mayús[§6x10§7], CTRL[§ex100§7], ALT[§ax1000§7]\n§7Clic derecho para aumentar la cantidad, clic izquierdo para reducirla.\n§7Mayús + clic izquierdo para limpiar.
+modularui.fluid.click_to_fill=Hacé clic §bizquierdo§7 con un contenedor de fluidos para §bllenar§7 el tanque (hacé mayús-clic para una pila completa).
+modularui.fluid.click_combined=Hacé clic §cderecho§7 o §bizquierdo§7 con un contenedor de fluidos para §cvaciar§7 o §bllenar§7 el tanque (hacé mayús-clic para una pila completa).
+modularui.fluid.click_to_empty=Hacé clic §cderecho§7 con un contenedor de fluidos para §cvaciar§7 el tanque (hacé mayús-clic para una pila completa).
+modularui.item.phantom.control=§7Girá hacia arriba la rueda para aumentar la cantidad, hacia abajo para reducirla.\n§7Mayús[§6x4§7], CTRL[§ex16§7], ALT[§ax64§7]\n§7Clic derecho para aumentar la cantidad, clic izquierdo para reducirla.\n§7Mayús + clic izquierdo para limpiar.
